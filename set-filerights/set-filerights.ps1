@@ -1,36 +1,22 @@
 cd $PSScriptRoot
 
-$services = "wuauserv","trustedinstaller"
-$services | ForEach-Object{
-    Get-Service $_ | Set-Service -StartupType manual
-    Start-Service $_
-}
-
-$paths = "c:\Corporate App","c:\´Development App"
-$paths | ForEach-Object{
-    if(Test-Path $_){Remove-Item $_ -recurse -force}
-}
-
-# Copy Apps
-$archives = Get-ChildItem .\AppLockerEnvInstall -Filter *.zip
-$archives | ForEach-Object{
-    Expand-Archive $_.FullName -DestinationPath 'c:\' -Force  
-}
-
-# set ACL
+# Locate SetACL exe
 $setaclpath = ".\SetACL.exe"
-$apppathSWINSTALL = "c:\Corporate App"
-$apppathDA = "c:\Development App"
 
-$SIDSCCM = (Get-LocalUser "sw-install").sid.value
-$SIDDA = (Get-LocalUser "admin").sid.value
+# Configure the SW-INSTALL owned app folder
+$apppathSWINSTALL = ".\Corporate App"
 
-foreach($apppathSWINSTALLER in $apppathsSWINSTALLER){
-    & $setaclpath -on $apppathSWINSTALLER -ot file -actn setowner -ownr "n:$SIDSCCM" | Out-Null
-    Get-ChildItem $apppathSWINSTALLER | ForEach-Object{& $setaclpath -on $_.FullName -ot file -actn setowner -ownr "n:$SIDSCCM"}  | Out-Null
-}
+# Configure the ADMIN owned app folder
+$apppathADMIN = ".\Development App"
 
-foreach($apppathDA in $apppathsDA){
-    & $setaclpath -on $apppathDA -ot file -actn setowner -ownr "n:$SIDDA"  | Out-Null
-    Get-ChildItem $apppathDA | ForEach-Object{& $setaclpath -on $_.FullName -ot file -actn setowner -ownr "n:$SIDDA"}  | Out-Null
-}
+# Get the SIDs for the local users ADMIN and SW-INSTALL
+$SIDSWINSTALL = (Get-LocalUser "sw-install").sid.value
+$SIDADMIN = (Get-LocalUser "admin").sid.value
+
+# Set file rights for the SW-INSTALL owned app folder
+& $setaclpath -on $apppathSWINSTALL -ot file -actn setowner -ownr "n:$SIDSWINSTALL" | Out-Null
+Get-ChildItem $apppathSWINSTALL | ForEach-Object{& $setaclpath -on $_.FullName -ot file -actn setowner -ownr "n:$SIDSWINSTALL"}  | Out-Null
+
+# Set file rights for the SW-INSTALL owned app folder
+& $setaclpath -on $apppathADMIN -ot file -actn setowner -ownr "n:$SIDADMIN"  | Out-Null
+Get-ChildItem $apppathADMIN | ForEach-Object{& $setaclpath -on $_.FullName -ot file -actn setowner -ownr "n:$SIDADMIN"}  | Out-Null
